@@ -1,0 +1,193 @@
+---
+title: "Code for figures"
+author: "Dave Costello"
+date: "2025-09-26"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(dplyr)
+library(ggplot2)
+library(ggspatial)
+library(rnaturalearth)
+library(cowplot)
+library(terra)
+```
+
+
+```{r load spatial data}
+sites <- read.csv(file="NDS site info.csv")
+summary(factor(sites$Problem)) #60 total NDS deployments were done, 9 duplicates
+unique(sites$Stream) #52 unique streams where NDS were deployed
+unique(sites[sites$Problem=="None",'Stream']) #41 streams were NDS were successfully retrieved
+
+#Streams with good NDS deployments by year
+goodNDS <- sites[sites$Problem=="None",]
+good21 <- goodNDS[goodNDS$Year==2021,'Stream']
+good22 <- goodNDS[goodNDS$Year==2022,'Stream']
+```
+
+```{r load raw data}
+
+```
+
+
+```{r load derived data}
+#Classification based on presence/absence of N, P, Fe, Zn limitation
+bclass <- read.csv("classify.csv")
+
+siteclass <- merge(sites[sites$Problem=="None",],bclass,by.x="Stream",by.y="Site",all.x=T)
+```
+
+```{r soil maps}
+#Function to convert from 3 band to one band hex color
+RGBrast <- function(file){
+  r <- terra::rast(file)
+  
+  #Extract three bands
+  r_red <- r[[1]]
+  r_green <- r[[2]]
+  r_blue <- r[[3]]
+  
+  #Convert to dataframe
+  rgb_df <- as.data.frame(c(r_red, r_green, r_blue), xy = TRUE)
+  
+  # Rename columns
+  colnames(rgb_df) <- c("x", "y", "red", "green", "blue")
+  
+  #Create hex column
+  rgb_df <- rgb_df %>%
+  mutate(
+    red = as.integer(red),
+    green = as.integer(green),
+    blue = as.integer(blue),
+    hex = rgb(red, green, blue, maxColorValue = 255,alpha=127)
+  )
+  
+  rgb_df
+  }
+
+FeAr <- RGBrast("A_Fe.tif")
+ZnAr <- RGBrast("A_Zn.tif")
+```
+
+
+```{r Figure 1 - maps}
+states <- ne_states(country=c("united states of america","canada"),returnclass="sf")
+
+maplim <- function(limvar,limcol,legname,bgmap=NULL){
+  
+  #set colors for points and legend
+  colno <- which(colnames(siteclass)==limvar)
+  
+  legend_data <- data.frame(percentile = rev(c("90-100", "80-90", "70-80", "60-70", "50-60","40-50", "30-40", "20-30", "10-20", "0 -10")),
+  fill = rev(c("#FF0000", "#FF7F00", "#FFFF00", "#ADFF2F", "#7FFF7F",
+               "#66FFCC", "#33CCFF", "#3399FF", "#3366FF", "#0000FF")),
+  y = 1:10,alpha=rep(127,10))
+  
+            #Map with no background raster
+    if(is.null(bgmap)){
+      ggplot() + 
+        geom_sf(data = states,fill="antiquewhite") +
+ 
+        #Add open circles at all sites
+        geom_point(data=siteclass,
+               mapping=aes(y=Latitude,x=Longitude),
+               color="grey30",size=3,pch=1,stroke=1.5)+
+  
+        #Overlay colors points for sites limited by nutrient
+        geom_point(data=siteclass[siteclass[,colno]=="Yes",],
+               mapping=aes(y=Latitude,x=Longitude),colour=limcol,size=3)+
+        
+        #Build legend
+        geom_rect(aes(xmin=-84,xmax=Inf,ymin=47,ymax=Inf),
+            fill="white",color="grey30")+
+        geom_point(aes(x=-83,y=48),colour=limcol,size=3)+
+        annotate("text",x=-80,y=48,label=paste(legname,"limited"))+
+        
+        #Map limits
+        coord_sf(xlim = c(-90, -78), ylim = c(30, 48))+
+        
+        #Add scale bar
+        annotation_scale(location = "br", width_hint = 0.3) + 
+    
+        #Add north arrow
+        annotation_north_arrow(location = "br", which_north = "true", 
+                               pad_y = unit(0.2, "in"),pad_x = unit(0,"in"),
+                               height = unit(0.5,"in"), style = 
+                               north_arrow_fancy_orienteering) +
+        
+        #Theme
+        theme(panel.background = element_rect(fill = "aliceblue"),
+        panel.border = element_rect(colour = "black", fill=NA,linewidth=1),
+        axis.title.x=element_blank(),axis.title.y=element_blank(),
+        axis.text.x=element_text(angle=90),
+        panel.grid.major = element_blank())}
+  
+            #Map with background raster
+    else{
+      ggplot() + 
+        geom_sf(data = states,fill="antiquewhite") +
+        
+        #Add soil raster
+        geom_raster(data=bgmap,mapping=aes(y=y,x=x,fill=hex))+
+        
+        #Remove legend
+        scale_fill_identity(guide = "none") +
+        
+        #Add open circles at all sites
+        geom_point(data=siteclass,
+               mapping=aes(y=Latitude,x=Longitude),
+               color="grey30",size=3,pch=1,stroke=1.5)+
+        
+        #Overlay colors points for sites limited by nutrient
+        geom_point(data=siteclass[siteclass[,colno]=="Yes",],
+               mapping=aes(y=Latitude,x=Longitude),colour=limcol,
+             size=3)+
+        
+        #Build legend
+        geom_rect(aes(xmin=-84,xmax=Inf,ymin=47,ymax=Inf),
+                  fill="white",color="grey30")+
+        geom_point(aes(x=-83,y=48),colour=limcol,size=3)+
+        annotate("text",x=-80,y=48,label=paste(legname,"limited"))+
+        
+        #Map limits
+        coord_sf(xlim = c(-90, -78), ylim = c(30, 48))+
+        
+        #Add scale bar
+        annotation_scale(location = "br", width_hint = 0.3) +
+        
+        #Add north arrow
+        annotation_north_arrow(location = "br", which_north = "true", 
+                               pad_y = unit(0.2, "in"),pad_x = unit(0,"in"),
+                               height = unit(0.5,"in"), style =
+                               north_arrow_fancy_orienteering) +
+        
+        #Add raster legend
+        geom_rect(aes(xmin=-Inf,xmax=-87.6,ymin=-Inf,ymax=33),
+                  fill="white",color="grey30")+
+        annotate("text",x=-89,y=32.8,label="Percentile",size=2,fontface=2)+
+        geom_tile(data = legend_data, aes(x = -90, y = (y*0.32)+29.2, 
+                  fill = fill), width = 0.8) +
+        geom_text(data = legend_data, aes(x = -89.5, y = (y*0.32)+29.2,
+                  label = percentile), hjust = 0, size = 2) +
+        
+        #Theme
+        theme(panel.background = element_rect(fill = "aliceblue"),
+        panel.border = element_rect(colour = "black", fill=NA, linewidth=1),
+        axis.title.x=element_blank(),axis.title.y=element_blank(),
+        axis.text.x=element_text(angle=90),
+        panel.grid.major = element_blank())
+  }
+}
+
+plot_grid(
+  maplim("N_TF","green3","N"),
+  maplim("P_TF","dodgerblue2","P"),
+  maplim('Fe_TF',"orangered","Fe",bgmap=FeAr),
+  maplim('Zn_TF',"purple3","Zn",bgmap=ZnAr),
+nrow=1,labels = "auto"
+  )
+
+```
+
