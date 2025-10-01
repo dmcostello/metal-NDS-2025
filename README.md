@@ -15,11 +15,17 @@ frequently limit primary producer biomass*.
 
 Raw data files in repository:
 
-`NDS site info.csv`
+`NDSsites.csv`
 
 `chlorophyll.csv`
 
 `benthotorch.csv`
+
+`WQ.csv`
+
+`LULC.csv`
+
+`soilmetalWS.csv`
 
 `A_Fe.tif`
 
@@ -39,13 +45,13 @@ Code files in repository:
 
 ## Metadata for files used in `figures.R`
 
-### `NDS site info.csv`
+### `NDSsites.csv`
 
 | Parameter    | Definition                          | Units                   |
 |------------------|------------------------------------|------------------|
 | Stream       | Common name of stream               |                         |
 | Region       | Common name for region of study     |                         |
-| Year         | Year experiment was completed        |                         |
+| Year         | Year experiment was completed       |                         |
 | Problem      | Descriptor of any problems with NDS |                         |
 | Cup_letter   | Unique letter code for stream       |                         |
 | Deploy date  | Date of deployment                  | month/day/year          |
