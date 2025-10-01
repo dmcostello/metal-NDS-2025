@@ -1,5 +1,5 @@
 ---
-title: "Code for figures"
+title: "TRACE NDS code for figures"
 author: "Dave Costello"
 date: "2025-09-26"
 output: html_document
@@ -14,6 +14,7 @@ library(cowplot)
 library(terra)
 ```
 
+### Load data
 
 ```{r load spatial data}
 sites <- read.csv(file="NDS site info.csv")
@@ -27,8 +28,11 @@ good21 <- goodNDS[goodNDS$Year==2021,'Stream']
 good22 <- goodNDS[goodNDS$Year==2022,'Stream']
 ```
 
-```{r load raw data}
+```{r load biomass data}
+chl <- read.csv(file="chlorophyll.csv") #Lab measured chla
+BT <- read.csv(file="benthotorch.csv") #Field fluorometry
 
+all_algae <- merge(chl[,c(2:3,5)],BT,by=c("Sample_ID","Year"),all=T) #Combined
 ```
 
 
@@ -38,6 +42,8 @@ bclass <- read.csv("classify.csv")
 
 siteclass <- merge(sites[sites$Problem=="None",],bclass,by.x="Stream",by.y="Site",all.x=T)
 ```
+
+### Functions and required calculations
 
 ```{r soil maps}
 #Function to convert from 3 band to one band hex color
@@ -71,8 +77,19 @@ FeAr <- RGBrast("A_Fe.tif")
 ZnAr <- RGBrast("A_Zn.tif")
 ```
 
+```{r log axis}
+logaxis = function(minlog,maxlog,side,labels=T,scale=1){
+  pow <- seq(minlog,maxlog,by=1)
+  ticksat <- as.vector(sapply(pow, function(p) (1:10)*10^p))
+  ifelse(labels==T,axis(side, 10^pow,las=1,cex.axis=scale),axis(side,10^pow,las=1,labels=NA,cex.axis=scale))
+  axis(side, ticksat, labels=NA, tcl=-0.25, lwd=0, lwd.ticks=1)
+}
 
-```{r Figure 1 - maps}
+```
+
+### Code for figures 
+
+```{r Figure 1 - Maps}
 states <- ne_states(country=c("united states of america","canada"),returnclass="sf")
 
 maplim <- function(limvar,limcol,legname,bgmap=NULL){
@@ -188,6 +205,48 @@ plot_grid(
   maplim('Zn_TF',"purple3","Zn",bgmap=ZnAr),
 nrow=1,labels = "auto"
   )
+
+```
+
+```{r Figure 2 - Chla response}
+
+```
+
+```{r Figure 3 - Community response}
+
+```
+
+```{r Figure 4 - Iron RF model}
+
+```
+
+```{r Figure 5 - Zinc RF model}
+
+```
+
+```{r Figure S3 - field v lab biomass}
+#Linear model
+mod1<- lm(log10(Total)~log10(CHLA)*Year,data=all_algae)
+summary(mod1) #Difference in slope between 2021 and 2022. Greater slope in 2022, b/c 20 min in dark?
+
+#Best-fit line for arithmetic plot
+predchl <- seq(1,100,by=1)
+pred21 <- predict(mod1,data.frame(Year=rep(2021,100),CHLA=predchl))
+pred22 <- predict(mod1,data.frame(Year=rep(2022,100),CHLA=predchl))
+
+plot(Total~CHLA,data=all_algae[all_algae$Year==2021,],col="red",pch=16,las=1,
+     xlim=c(0,100),ylim=c(0,10),
+     xlab=expression(paste("Lab-measured chlorophyll ",italic(a), " (µg/m"^2*")")),
+     ylab=expression(paste("Field-measured chlorophyll ",italic(a), " (µg/m"^2*")")))
+points(Total~CHLA,data=all_algae[all_algae$Year==2022,],col="dodgerblue",pch=1)
+legend("bottomright",c("2021","2022"),col=c("red","dodgerblue"),
+       pch=c(16,1),lty=c(1,2))
+lines(predchl,10^pred21,col="red")
+lines(predchl,10^pred22,col="dodgerblue",lty=2)
+text(80,10,"r-squared = 0.58")
+```
+
+```{r Figure S4 - RF top 10 vars}
 
 ```
 

@@ -17,6 +17,10 @@ Raw data files in repository:
 
 `NDS site info.csv`
 
+`chlorophyll.csv`
+
+`benthotorch.csv`
+
 `A_Fe.tif`
 
 `A_Zn.tif`
@@ -28,6 +32,8 @@ Derived data files in repository:
 Code files in repository:
 
 `figures.Rmd`
+
+`statistics.Rmd`
 
 ------------------------------------------------------------------------
 
