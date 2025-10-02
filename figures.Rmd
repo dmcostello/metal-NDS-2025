@@ -16,8 +16,8 @@ library(terra)
 
 ### Load data
 
-```{r load spatial data}
-sites <- read.csv(file="NDS site info.csv")
+```{r load site data}
+sites <- read.csv(file="NDSsites.csv")
 summary(factor(sites$Problem)) #60 total NDS deployments were done, 9 duplicates
 unique(sites$Stream) #52 unique streams where NDS were deployed
 unique(sites[sites$Problem=="None",'Stream']) #41 streams were NDS were successfully retrieved
@@ -35,12 +35,31 @@ BT <- read.csv(file="benthotorch.csv") #Field fluorometry
 all_algae <- merge(chl[,c(2:3,5)],BT,by=c("Sample_ID","Year"),all=T) #Combined
 ```
 
+```{r load environmental data}
+WQ_NDS <- read.csv(file="WQ.csv") #Water quality samples
+
+LULC <- read.csv(file="LULC.csv") #Land use land cover data
+
+NDSsoil <- read.csv(file="soilmetalWS.csv") #Metal in soils data
+
+#Make merged dataset - 41 streams, 99 predictors
+land <- merge(LULC,NDSsoil[,c(2,4:24)],by="Stream")
+landWQ <- merge(land,WQ_NDS,by.x="Stream",by.y="Site")
+```
+
 
 ```{r load derived data}
 #Classification based on presence/absence of N, P, Fe, Zn limitation
 bclass <- read.csv("classify.csv")
 
 siteclass <- merge(sites[sites$Problem=="None",],bclass,by.x="Stream",by.y="Site",all.x=T)
+
+#Calculated response ratios
+RRchl <- read.csv("RR_chl.csv")
+RRTot <- read.csv("RR_BT.csv")
+RRdiatom <- read.csv("RR_diatom.csv")
+RRcyano <- read.csv("RR_cyano.csv")
+RRgreen <- read.csv("RR_chlorophyte.csv")
 ```
 
 ### Functions and required calculations
@@ -86,6 +105,52 @@ logaxis = function(minlog,maxlog,side,labels=T,scale=1){
 }
 
 ```
+
+```{r response ratio panel}
+RRnames <- c("N","P","Fe","Zn","N+P","N+P+Fe","P+Fe","P+Fe+Mo","P+Fe+Ni","N+Fe","N+Fe+Zn") #Treatment names for plot
+intopt <- c("Simult","Ind add","Ind sub","Ind sup") #Options for what we consider co-limitation
+
+#Function to make the response ratio plots. Data must be in format produced in statistics.Rmd
+RRplot <- function(RRdata,xmin=-1,xmax=3){ 
+  par(pty="m",mar=c(4,5,2,2))
+  
+  #Build structure of plot and axes
+  stripchart(RRdata[,3:13],pch=1,cex=0,las=1,xlim=c(xmin,xmax),ylim=c(0.5,11.5),
+             xlab="ln response ratio",group.names = rev(RRnames))
+  
+  #Bounding box based on Harpole et al. 2011 thresholds
+  rect(-0.326,0,0.326,15,col="grey90",border=NA)
+  abline(v=0)
+  
+  #Add single element treatments
+  for(i in 1:4){points(RRdata[,2+i],11-i+jitter(rep(1,41),factor=5),cex=1.5,
+                     col=ifelse(RRdata[,2+i]>0.326,"royalblue","gray30"))}
+  
+  text(xmax,11.4,"SINGLE LIMIT",adj=1)
+  
+  #Add text showing the # of limited streams/total streams
+  for(i in 3:6){text(xmax,(11:8)[i-2],paste(sum(RRdata[,i]>0.326 ,na.rm=T),
+                                  "/",sum(!is.na(RRdata[,i])),sep=""),adj=1)}
+  
+  #Add points for multiple element treatments 
+  for(i in c(1:5,7)){points(RRdata[,6+i],7-i+jitter(rep(1,41),factor=5),cex=1.5,
+                     col=ifelse(RRdata[,20+i] %in% intopt,"goldenrod2","gray30")
+                     )}
+  #Only did NxFe for 2022 - add seperately
+  with(RRchl[RRdata$Site %in% good22,],
+             points(NFe,1+jitter(rep(1,14),factor=5),cex=1.5,
+                     col=ifelse(NxFecl %in% intopt,"goldenrod2","gray30")
+                    ))
+  
+  text(xmax,7.4,"CO-LIMIT",adj=1)
+  
+  #Add text showing the # of co-limited streams/total streams
+  for(i in 21:27){text(xmax,(7:1)[i-20],paste(sum(RRdata[,i] %in%
+                  intopt,na.rm=T), "/",sum(!is.na(RRdata[,i])),sep=""),adj=1)}
+}
+
+```
+
 
 ### Code for figures 
 
@@ -209,11 +274,14 @@ nrow=1,labels = "auto"
 ```
 
 ```{r Figure 2 - Chla response}
-
+RRplot(RRchl,xmin=-1,xmax=4)
 ```
 
 ```{r Figure 3 - Community response}
-
+RRplot(RRTot,xmax=4) #(a) Total BenthoTorch biomass 
+RRplot(RRdiatom,xmax=4) #(b) Diatom biomass 
+RRplot(RRcyano,xmax=4) #(c) Cyanobacteria biomass 
+RRplot(RRgreen,xmin=-4,xmax=6) #(d) Chlorophyte biomass
 ```
 
 ```{r Figure 4 - Iron RF model}
@@ -237,8 +305,8 @@ pred22 <- predict(mod1,data.frame(Year=rep(2022,100),CHLA=predchl))
 #Code for plot S3
 plot(Total~CHLA,data=all_algae[all_algae$Year==2021,],col="red",pch=16,las=1,
      xlim=c(0,100),ylim=c(0,10),
-     xlab=expression(paste("Lab-measured chlorophyll ",italic(a), " (µg/m"^2*")")),
-     ylab=expression(paste("Field-measured chlorophyll ",italic(a), " (µg/m"^2*")")))
+     xlab=expression(paste("Lab-measured chlorophyll ",italic(a), " (µg/cm"^2*")")),
+     ylab=expression(paste("Field-measured chlorophyll ",italic(a), " (µg/cm"^2*")")))
 points(Total~CHLA,data=all_algae[all_algae$Year==2022,],col="dodgerblue",pch=1)
 legend("bottomright",c("2021","2022"),col=c("red","dodgerblue"),
        pch=c(16,1),lty=c(1,2))
