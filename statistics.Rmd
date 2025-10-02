@@ -251,25 +251,19 @@ predclass[test,1:6]
 Here is example code for the process of optimization of hyperparameters `mtry`, `maxnodes`, and  `ntrees` for the Fe limitation RF model. Optimization was done independently for each response variable using the full dataset.
 
 ```{r hyperparameter optimization}
-#Build Fe dataset
-rfFedata <- cbind(Fe_TF=as.factor(predclass[,3]),na.roughfix(predclass[,c(2,10:108)]))
-
-#Invert the response variables to put YES limited first
-rfFedata$Fe_TF <- factor(rfFedata$Fe_TF,levels=c("Yes","No"))
-
-Fetrain <- rfFedata[-test,]
-Fetest <- rfFedata[test,]
+#Build dataset
+tunedata <- cbind(resp=as.factor(predclass[,3]),na.roughfix(predclass[,c(2,10:108)]))
 
 ## Define repeated cross validation with 5 folds and 10 repeats
 cv10 <- trainControl(method='repeatedcv', number=5, repeats=10)
 
 ## Tune mtry
-tuneGrid <- expand.grid(.mtry = seq(2,100,by=7))
+tuneGrid <- expand.grid(.mtry = seq(10,100,by=5))
 
 set.seed(8)
 
 #Grid search for best # of variables per tree
-rf_mtry <- train(Fe_TF~.,data=rfFedata, 
+rf_mtry <- train(resp~.,data=tunedata, 
         method='rf', trControl=cv10,
         metric='Accuracy',
         tuneGrid = tuneGrid)
@@ -284,8 +278,8 @@ tuneGrid <- expand.grid(.mtry = best_mtry)
 
 for (maxnodes in c(2:5)) {
     set.seed(1234)
-    rf_maxnode <- train(Fe_TF~.,
-        data = rfFedata,
+    rf_maxnode <- train(resp~.,
+        data = tunedata,
         method = "rf",
         metric = "Accuracy",
         tuneGrid = tuneGrid,
@@ -304,8 +298,8 @@ summary(results_maxnode)
 store_ntree <- list()
 for (ntree in seq(400,2000,by=100)) {
     set.seed(1234)
-    rf_maxtree <- train(Fe_TF~.,
-        data = rfFedata,
+    rf_maxtree <- train(resp~.,
+        data = tunedata,
         method = "rf",
         metric = "Accuracy",
         tuneGrid = tuneGrid,
@@ -322,20 +316,113 @@ summary(results_ntree)
 ```
 
 ```{r iron random forest model}
+#Build Fe dataset
+rfFedata <- cbind(Fe_TF=as.factor(predclass[,'Fe_TF']),na.roughfix(predclass[,c(2,10:108)]))
+
+#Invert the response variables to put YES limited first
+rfFedata$Fe_TF <- factor(rfFedata$Fe_TF,levels=c("Yes","No"))
+
+#Test and train subsets
+Fetrain <- rfFedata[-test,]
+Fetest <- rfFedata[test,]
+
+#Run rf model and evaluate performance (33% misclass)
 set.seed(18)
 rfFe <- randomForest(Fe_TF~.,
     data=Fetrain,mtry=100,maxnodes=4,ntree=500)
 rfFe
-varImpPlot(rfFe,n.var = 10)
 
 #Test data 75% accuracy (2 of 8 misclassified)
 testpred <- predict(rfFe,newdata = Fetest)
 confusionMatrix(testpred, Fetest$Fe_TF)
 
 #Partial dependence plots for top variables
+varImpPlot(rfFe,n.var = 10)
+
 partialPlot(rfFe,rfFedata,INORGNWETDEP2008WS,"Yes",n.pt=100)
 partialPlot(rfFe,rfFedata,SRP_ugL,"Yes",log="x",n.pt=100)
 
-save(rfFe,file="rfFe.Rdata")
+#save(rfFe,file="rfFe.Rdata")
+```
+
+```{r nitrogen random forest model}
+#Build N dataset
+rfNdata <- cbind(N_TF=as.factor(predclass[,'N_TF']),na.roughfix(predclass[,c(2,10:108)]))
+
+#Invert the response variables to put YES limited first
+rfNdata$N_TF <- factor(rfNdata$N_TF,levels=c("Yes","No"))
+
+#Test and train subsets
+Ntrain <- rfNdata[-test,]
+Ntest <- rfNdata[test,]
+
+#Run rf model and evaluate performance (36% misclass)
+set.seed(9)
+rfN <- randomForest(N_TF~.,
+    data=Ntrain,mtry=10,maxnodes=5,ntree=400)
+rfN
+
+#Test data 75% accuracy (1 of 8 misclassified)
+testpred <- predict(rfN,newdata = Ntest)
+confusionMatrix(testpred, Ntest$N_TF)
+
+#Partial dependence plots for top variables
+varImpPlot(rfN,n.var = 10)
+
+#save(rfN,file="rfN.Rdata")
+```
+
+```{r phosphorus random forest model}
+#Build Fe dataset
+rfPdata <- cbind(P_TF=as.factor(predclass[,'P_TF']),na.roughfix(predclass[,c(2,10:108)]))
+
+#Invert the response variables to put YES limited first
+rfPdata$P_TF <- factor(rfPdata$P_TF,levels=c("Yes","No"))
+
+#Test and train subsets
+Ptrain <- rfPdata[-test,]
+Ptest <- rfPdata[test,]
+
+#Run rf model and evaluate performance
+set.seed(7)
+rfP <- randomForest(P_TF~.,
+    data=Ptrain,mtry=10,maxnodes=3,ntree=1500)
+rfP
+
+#Test data 75% accuracy (1 of 8 misclassified)
+testpred <- predict(rfP,newdata = Ptest)
+confusionMatrix(testpred, Ptest$P_TF)
+
+#Partial dependence plots for top variables
+varImpPlot(rfP,n.var = 10)
+
+#save(rfP,file="rfP.Rdata")
+```
+
+```{r zinc random forest model}
+#Build Zn dataset
+rfZndata <- cbind(Zn_TF=as.factor(predclass[,'Zn_TF']),na.roughfix(predclass[,c(2,10:108)]))
+
+#Invert the response variables to put YES limited first
+rfZndata$Zn_TF <- factor(rfZndata$Zn_TF,levels=c("Yes","No"))
+
+#Test and train subsets
+Zntrain <- rfZndata[-test,]
+Zntest <- rfZndata[test,]
+
+#Run rf model and evaluate performance
+set.seed(30)
+rfZn <- randomForest(Zn_TF~.,
+    data=Zntrain,mtry=100,maxnodes=4,ntree=500)
+rfZn
+
+#Test data 75% accuracy (1 of 8 misclassified)
+testpred <- predict(rfZn,newdata = Zntest)
+confusionMatrix(testpred, Zntest$Zn_TF)
+
+#Partial dependence plots for top variables
+varImpPlot(rfZn,n.var = 10)
+
+#save(rfZn,file="rfZn.Rdata")
 ```
 
