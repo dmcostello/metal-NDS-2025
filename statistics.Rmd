@@ -1,0 +1,327 @@
+---
+title: "TRACE NDS code for statistical analysis"
+author: "Dave Costello"
+date: "2025-09-26"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(dplyr)
+
+```
+
+### Load data
+
+```{r load site data}
+sites <- read.csv(file="NDSsites.csv")
+summary(factor(sites$Problem)) #60 total NDS deployments were done, 9 duplicates
+unique(sites$Stream) #52 unique streams where NDS were deployed
+unique(sites[sites$Problem=="None",'Stream']) #41 streams were NDS were successfully retrieved
+
+#Streams with good NDS deployments by year
+goodNDS <- sites[sites$Problem=="None",]
+good21 <- goodNDS[goodNDS$Year==2021,'Stream']
+good22 <- goodNDS[goodNDS$Year==2022,'Stream']
+```
+
+```{r load biomass data}
+chl <- read.csv(file="chlorophyll.csv") #Lab measured chla
+BT <- read.csv(file="benthotorch.csv") #Field fluorometry
+
+all_algae <- merge(chl[,c(2:3,5)],BT,by=c("Sample_ID","Year"),all=T) #Combined
+```
+
+```{r load environmental data}
+WQ_NDS <- read.csv(file="WQ.csv") #Water quality samples
+
+LULC <- read.csv(file="LULC.csv") #Land use land cover data
+
+NDSsoil <- read.csv(file="soilmetalWS.csv") #Metal in soils data
+
+#Make merged dataset - 41 streams, 99 predictors
+land <- merge(LULC,NDSsoil[,c(2,4:24)],by="Stream")
+landWQ <- merge(land,WQ_NDS,by.x="Stream",by.y="Site")
+```
+
+```{r load derived data}
+
+#Classification based on presence/absence of N, P, Fe, Zn limitation
+bclass <- read.csv("classify.csv")
+
+siteclass <- merge(sites[sites$Problem=="None",],bclass,by.x="Stream",by.y="Site",all.x=T)
+#Load in nutrient limitation classification
+bclass <- read.csv("classify.csv")
+bclass$Chl_class <- factor(bclass$Chl_class)
+bclass$Chl_Fe_class <- factor(bclass$Chl_Fe_class)
+
+table(bclass$Chl_class)
+table(bclass$Fe_TF)
+table(bclass$N_TF)
+table(bclass$P_TF)
+table(bclass$Zn_TF)
+
+#Merge classification with predictors
+WQclass <- merge(bclass[,c(1:2,6:9)],WQ_NDS,by="Site",all=T) 
+predclass <- merge(bclass[,c(1:2,6:9)],landWQ,by.x="Site",by.y="Stream",all=T) 
+
+```
+
+
+### Calculate log response ratios and nutrient limitation classification
+
+Calculating response ratios using the method of Harpole et al. 2011.
+
+Harpole, W. Stanley, et al. "Nutrient co‐limitation of primary producer communities." *Ecology Letters* 14.9 (2011): 852-862.
+
+Note that 2021 and 2022 had different treatment combinations so the RRs are not identical across years.
+
+```{r RR calcs}
+ #Redefine for different endpoints
+dataforRR <- BT #name of dataset with raw biomass data
+RRvar <- "Diatoms" #Column name for which to calculate response ratios
+
+  #Subsets data into different years 
+RR21data <- dataforRR[dataforRR$Year==2021,]
+RR22data <- dataforRR[dataforRR$Year==2022,]
+
+  #Create empty dataframes to store response ratios
+RR21 <- data.frame("Site"=good21)
+RR22 <- data.frame("Site"=good22)
+  
+  #Function to calculate treatment means and response ratios from 2021 
+for(i in 1:length(good21)){
+  sub <- RR21data[RR21data$Site==good21[i],]
+  means <- with(sub,tapply(sub[,which(colnames(sub)==RRvar)], #Use  to find column matching variable name
+                           Treatment,mean,na.rm=T))
+  
+    #Single element response ratios
+RR21[RR21$Site==good21[i],'Control'] <-means[1]
+RR21[RR21$Site==good21[i],'N'] <-log(means[2]/means[1])
+RR21[RR21$Site==good21[i],'P'] <-log(means[3]/means[1])
+RR21[RR21$Site==good21[i],'Fe'] <-log(means[4]/means[1])
+RR21[RR21$Site==good21[i],'Zn'] <-log(means[5]/means[1])
+
+  #Multi-element log response ratios (for plots)
+RR21[RR21$Site==good21[i],'NP'] <-log(means[10]/means[1])
+RR21[RR21$Site==good21[i],'PFe'] <-log(means[6]/means[1])
+RR21[RR21$Site==good21[i],'PFeMo'] <-log(means[7]/means[1])
+RR21[RR21$Site==good21[i],'PFeNi'] <-log(means[8]/means[1])
+RR21[RR21$Site==good21[i],'NFeZn'] <-log(means[9]/means[1])
+RR21[RR21$Site==good21[i],'NFe'] <- log((means[2]+means[4]-means[1])/means[1]) 
+
+#Assume N+Fe was additive. In 2022 everything was either sub-additive or antagonistic so this is the more conservative estimate. Not used for plotting, but used for calculating interation response ratios
+RR21[RR21$Site==good21[i],'NPFe'] <-log(means[11]/means[1])
+
+#Interaction response ratio calculations
+RR21[RR21$Site==good21[i],'NxP'] <- ((means[1]+means[10])-(means[2]+means[3]))/means[1]
+#NPFe compared NPFe combination to additive of NP and Fe
+RR21[RR21$Site==good21[i],'NPxFe'] <- ((means[1]+means[11])-(means[4]+means[10]))/means[1]
+#PFe compares P+Fe to additive Fe and P
+RR21[RR21$Site==good21[i],'PxFe'] <- ((means[1]+means[6])-(means[3]+means[4]))/means[1]
+
+#Mo and Ni compare 3-element combination to FeP
+RR21[RR21$Site==good21[i],'Mo'] <- (means[7]-means[6])/means[1]
+RR21[RR21$Site==good21[i],'Ni'] <- (means[8]-means[6])/means[1]
+
+#Missing N+Fe treatment to compare like Mo and Ni. Assume additive N and Fe and compare additive N, Fe, and Zn to N+Fe+Zn combination. Had to add 2 controls to N+Fe+Zn to account for three treatments
+RR21[RR21$Site==good21[i],'NFexZn'] <- ((means[9]+2*means[1])-(means[2]+means[4]+means[5]))/means[1]
+}
+
+  #Function to calculate treatment means and response ratios from 2022
+for(i in 1:length(good22)){
+  sub <- RR22data[RR22data$Site==good22[i],]
+  means <- with(sub,tapply(sub[,which(colnames(sub)==RRvar)],Treatment,mean,na.rm=T))
+  
+    #Single element response ratios
+RR22[RR22$Site==good22[i],'Control'] <-means[1]
+RR22[RR22$Site==good22[i],'N'] <-log(means[2]/means[1])
+RR22[RR22$Site==good22[i],'P'] <-log(means[3]/means[1])
+RR22[RR22$Site==good22[i],'Fe'] <-log(means[4]/means[1])
+RR22[RR22$Site==good22[i],'Zn'] <-log(means[5]/means[1])
+
+  #Multi-element log response ratios (for plots)
+RR22[RR22$Site==good22[i],'NP'] <-log(means[11]/means[1])
+RR22[RR22$Site==good22[i],'NPFe'] <-log(means[12]/means[1])
+RR22[RR22$Site==good22[i],'PFe'] <-log(means[6]/means[1])
+RR22[RR22$Site==good22[i],'PFeMo'] <-log(means[8]/means[1])
+RR22[RR22$Site==good22[i],'PFeNi'] <-log(means[9]/means[1])
+RR22[RR22$Site==good22[i],'NFe'] <-log(means[7]/means[1])
+RR22[RR22$Site==good22[i],'NFeZn'] <-log(means[10]/means[1])
+
+
+#Interaction response ratio calculations
+RR22[RR22$Site==good22[i],'NxP'] <- ((means[1]+means[11])-(means[2]+means[3]))/means[1]
+#NPFe compared NPFe combination to additive of NP and Fe
+RR22[RR22$Site==good22[i],'NPxFe'] <- ((means[1]+means[12])-(means[4]+means[11]))/means[1]
+#PFe compares P+Fe to additive Fe and P
+RR22[RR22$Site==good22[i],'PxFe'] <- ((means[1]+means[6])-(means[3]+means[4]))/means[1]
+#NFe compares N+Fe to additive Fe and N
+RR22[RR22$Site==good22[i],'NxFe'] <- ((means[1]+means[7])-(means[2]+means[4]))/means[1]
+#Zn compares N+Fe+Zn to additive Zn and N+Fe
+RR22[RR22$Site==good22[i],'NFexZn'] <- ((means[1]+means[10])-(means[5]+means[7]))/means[1]
+
+#Mo and Ni compare 3-element combination to FeP. 
+RR22[RR22$Site==good22[i],'Mo'] <- (means[8]-means[6])/means[1]
+RR22[RR22$Site==good22[i],'Ni'] <- (means[9]-means[6])/means[1]
+}
+
+#Show results
+head(RR22)
+
+```
+
+This code uses response ratios for treatments and classifies into 1 of 13 possible response classes (e.g., sub-additive, serial A:B). See Figure S2 for classification schema.
+
+```{r classification}
+#Co-limitation classification functions
+#Provide the dataset, the logRR of the individual treatments (e.g., A & B) and the interaction RR (AxB)
+
+#This function is for fully-crossed combinations (i.e., you have response ratios for A, B, and AxB)
+lim_class <- function(A,B,AxB,dataset){
+  forlen <- dim(dataset)[1]
+  sub <- (dataset[,c(A,B,AxB)])
+  tempvec <- rep("Unclassified",length=forlen)
+  for(i in 1:forlen){
+    tempvec[i] <- 
+      if(sum(is.na(sub[i,]))>0){NA} else #If any values are NA cannot calculate
+      if(sub[i,1]>0.325){ #If growth response to A
+        
+        if(sub[i,2]>0.325) { #And growth response to B then all Independent co-limited
+          if(sub[i,3]>0.385) {"Ind sup"} else #Super-additive
+            if(sub[i,3]< -0.385) {"Ind sub"} else #Sub-additive
+            {"Ind add"} #Additive
+        } 
+        else #If no growth response to B
+          if(sub[i,3]>0.385) {paste("Serial",A,":",B)} else #Serial limitation
+            if(sub[i,3]< -0.385) {paste("Antag",B)} else
+            {paste("Single",A)}
+      } #End of A limited
+
+    else #If no growth response to A
+        if(sub[i,2]>0.325){ #But a growth response to B
+          if(sub[i,3]>0.385){paste("Serial",B,":",A)} else #Serial limitation
+            if(sub[i,3]< -0.385) {paste("Antag",A)} else
+            {paste("Single",B)}
+        } 
+          
+    else #No growth to A or B
+      if(sub[i,1]> -0.325&sub[i,2]> -0.325){ #No negative responses
+        if(sub[i,3]>0.385){"Simult"} else
+          if(sub[i,3]< -0.385) {"Neg"} else
+            {"No lim"}
+          }
+            else #Some negative responses
+            if(sub[i,3]>0.385){"Rescue"} else
+            {"Neg"}
+    
+          }
+      print(tempvec)
+      }
+
+#This function is for incomplete combinations (i.e., you have response ratios for A and AxB). This is specific for Ni and Mo (all years) and Zn in 2021
+
+lim_class2 <- function(A,AxB,dataset){
+  forlen <- dim(dataset)[1]
+  sub <- (dataset[,c(A,AxB)])
+  tempvec <- rep("Unclassified",length=forlen)
+  for(i in 1:forlen){
+    tempvec[i] <- 
+      if(sum(is.na(sub[i,]))>0){NA} else #If any values are NA cannot calculate
+      
+        if(sub[i,1]>0.325){ #If growth response to A
+          if(sub[i,2]>0.385) {"Ind"} else #Independent co-limitation (or serial)
+            if(sub[i,2]< -0.385) {paste("Antag",AxB)} else #Antag
+            {paste("Single",A)} #Single element limited
+          
+        } else #If no growth response to A
+        {if(sub[i,2]>0.385){"Simult"} else #Simultaneous limitation
+            if(sub[i,2]< -0.385) {"Neg"} else
+            {"No lim"}
+        }
+      }
+      print(tempvec)
+}
+
+#Test it
+lim_class("N","P","NxP",RR22) %>% table()
+lim_class2("PFe","Mo",RR22) %>% table()
+```
+
+This code was used to create derived files `RR_chl.csv`, `RR_BT.csv`, `RR_chl_diatom.csv`, `RR_cyano.csv`, and `RR_chlorophyte.csv`
+
+### Random forest models
+Build test and train datasets. Used the same streams in test/train datasets for all response variables. To be representative, we targeted a test dataset with 3/4 sites N limited, 1/2 P limited, 1/2 Fe limited, and 1/4 Zn limited. We also wanted a test dataset that was regionally representative.
+
+```{r test and train data}
+set.seed(13)
+test <- sample(1:40,8)
+test[8] <- 36 #Swap out the 3rd NEO for another random UP site
+predclass[test,1:6]
+
+```
+
+Here is example code for the process of optimization of hyperparameters `mtry`, `maxnodes`, and  `ntrees` for the Fe limitation RF model. Optimization was done independently for each response variable.
+
+```{r hyperparameter optimization}
+## Define repeated cross validation with 5 folds and 10 repeats
+cv10 <- trainControl(method='repeatedcv', number=5, repeats=10)
+
+## Tune mtry
+tuneGrid <- expand.grid(.mtry = seq(2,98,by=6))
+
+set.seed(8)
+
+#Grid search for best # of variables per tree
+rf_mtry <- train(Fe_TF~.,data=rfFedata, 
+        method='rf', trControl=cv10,
+        metric='Accuracy',
+        tuneGrid = tuneGrid)
+
+print(rf_mtry)
+
+best_mtry <- rf_mtry$bestTune$mtry 
+#best_mtry <- 92
+
+#Tune maxnodes
+store_maxnode <- list()
+tuneGrid <- expand.grid(.mtry = best_mtry)
+
+for (maxnodes in c(2:5)) {
+    set.seed(1234)
+    rf_maxnode <- train(Fe_TF~.,
+        data = rfFedata,
+        method = "rf",
+        metric = "Accuracy",
+        tuneGrid = tuneGrid,
+        trControl = cv10,
+        importance = TRUE,
+        maxnodes = maxnodes,
+        ntree = 300)
+    current_iteration <- toString(maxnodes)
+    store_maxnode[[current_iteration]] <- rf_maxnode
+}
+results_mtry <- resamples(store_maxnode)
+summary(results_mtry)
+
+best_maxnode <- 4
+
+#Tune number of trees 
+store_ntree <- list()
+for (ntree in seq(400,2000,by=100)) {
+    set.seed(1234)
+    rf_maxtree <- train(Fe_TF~.,
+        data = rfFedata,
+        method = "rf",
+        metric = "Accuracy",
+        tuneGrid = tuneGrid,
+        trControl = cv10,
+        importance = TRUE,
+        maxnodes = 2,
+        ntree = ntree)
+    current_iteration <- toString(ntree)
+    store_ntree[[current_iteration]] <- rf_maxtree
+}
+results_ntree <- resamples(store_ntree)
+summary(results_ntree)
+
+```
