@@ -33,7 +33,27 @@ Raw data files in repository:
 
 Derived data files in repository:
 
+`RR_chl.csv`
+
+`RR_BT.csv`
+
+`RR_diatom.csv`
+
+`RR_chlorophyte.csv`
+
+`RR_cyano.csv`
+
 `classify.csv`
+
+Models in repository:
+
+`rfFe.Rdata`
+
+`rfN.Rdata`
+
+`rfP.Rdata`
+
+`rfZn.Rdata`
 
 Code files in repository:
 

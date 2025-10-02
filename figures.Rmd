@@ -17,7 +17,7 @@ library(terra)
 ### Load data
 
 ```{r load site data}
-sites <- read.csv(file="NDSsites.csv")
+sites <- read.csv(file="./raw data/NDSsites.csv")
 summary(factor(sites$Problem)) #60 total NDS deployments were done, 9 duplicates
 unique(sites$Stream) #52 unique streams where NDS were deployed
 unique(sites[sites$Problem=="None",'Stream']) #41 streams were NDS were successfully retrieved
