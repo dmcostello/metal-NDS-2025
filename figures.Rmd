@@ -29,18 +29,18 @@ good22 <- goodNDS[goodNDS$Year==2022,'Stream']
 ```
 
 ```{r load biomass data}
-chl <- read.csv(file="chlorophyll.csv") #Lab measured chla
-BT <- read.csv(file="benthotorch.csv") #Field fluorometry
+chl <- read.csv(file="./raw data/chlorophyll.csv") #Lab measured chla
+BT <- read.csv(file="./raw data/benthotorch.csv") #Field fluorometry
 
 all_algae <- merge(chl[,c(2:3,5)],BT,by=c("Sample_ID","Year"),all=T) #Combined
 ```
 
 ```{r load environmental data}
-WQ_NDS <- read.csv(file="WQ.csv") #Water quality samples
+WQ_NDS <- read.csv(file="./raw data/WQ.csv") #Water quality samples
 
-LULC <- read.csv(file="LULC.csv") #Land use land cover data
+LULC <- read.csv(file="./raw data/LULC.csv") #Land use land cover data
 
-NDSsoil <- read.csv(file="soilmetalWS.csv") #Metal in soils data
+NDSsoil <- read.csv(file="./raw data/soilmetalWS.csv") #Metal in soils data
 
 #Make merged dataset - 41 streams, 99 predictors
 land <- merge(LULC,NDSsoil[,c(2,4:24)],by="Stream")
@@ -50,17 +50,25 @@ landWQ <- merge(land,WQ_NDS,by.x="Stream",by.y="Site")
 
 ```{r load derived data}
 #Classification based on presence/absence of N, P, Fe, Zn limitation
-bclass <- read.csv("classify.csv")
+bclass <- read.csv("./derived data/classify.csv")
 
 siteclass <- merge(sites[sites$Problem=="None",],bclass,by.x="Stream",by.y="Site",all.x=T)
 
 #Calculated response ratios
-RRchl <- read.csv("RR_chl.csv")
-RRTot <- read.csv("RR_BT.csv")
-RRdiatom <- read.csv("RR_diatom.csv")
-RRcyano <- read.csv("RR_cyano.csv")
-RRgreen <- read.csv("RR_chlorophyte.csv")
+RRchl <- read.csv("./derived data/RR_chl.csv")
+RRTot <- read.csv("./derived data/RR_BT.csv")
+RRdiatom <- read.csv("./derived data/RR_diatom.csv")
+RRcyano <- read.csv("./derived data/RR_cyano.csv")
+RRgreen <- read.csv("./derived data/RR_chlorophyte.csv")
 ```
+
+```{r load models}
+load("./models/rfN.Rdata")
+load("./models/rfP.Rdata")
+load("./models/rfFe.Rdata")
+load("./models/rfZn.Rdata")
+```
+
 
 ### Functions and required calculations
 
