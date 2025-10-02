@@ -6,8 +6,9 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-library(dplyr)
-
+require(dplyr)
+require(randomForest)
+require(caret)
 ```
 
 ### Load data
@@ -44,26 +45,14 @@ landWQ <- merge(land,WQ_NDS,by.x="Stream",by.y="Site")
 ```
 
 ```{r load derived data}
-
 #Classification based on presence/absence of N, P, Fe, Zn limitation
 bclass <- read.csv("classify.csv")
 
+#Merge with site info
 siteclass <- merge(sites[sites$Problem=="None",],bclass,by.x="Stream",by.y="Site",all.x=T)
-#Load in nutrient limitation classification
-bclass <- read.csv("classify.csv")
-bclass$Chl_class <- factor(bclass$Chl_class)
-bclass$Chl_Fe_class <- factor(bclass$Chl_Fe_class)
 
-table(bclass$Chl_class)
-table(bclass$Fe_TF)
-table(bclass$N_TF)
-table(bclass$P_TF)
-table(bclass$Zn_TF)
-
-#Merge classification with predictors
-WQclass <- merge(bclass[,c(1:2,6:9)],WQ_NDS,by="Site",all=T) 
-predclass <- merge(bclass[,c(1:2,6:9)],landWQ,by.x="Site",by.y="Stream",all=T) 
-
+#Merge classification with environmental predictors
+predclass <- merge(bclass,landWQ,by.x="Site",by.y="Stream",all=T) 
 ```
 
 
@@ -247,7 +236,7 @@ lim_class("N","P","NxP",RR22) %>% table()
 lim_class2("PFe","Mo",RR22) %>% table()
 ```
 
-This code was used to create derived files `RR_chl.csv`, `RR_BT.csv`, `RR_chl_diatom.csv`, `RR_cyano.csv`, and `RR_chlorophyte.csv`
+This code was used to create derived files `RR_chl.csv`, `RR_BT.csv`, `RR_chl_diatom.csv`, `RR_cyano.csv`, and `RR_chlorophyte.csv`. The derived file `classify.csv` is a version of these files where classification of nutrient (co-)limitation is reduced to presence/absence.
 
 ### Random forest models
 Build test and train datasets. Used the same streams in test/train datasets for all response variables. To be representative, we targeted a test dataset with 3/4 sites N limited, 1/2 P limited, 1/2 Fe limited, and 1/4 Zn limited. We also wanted a test dataset that was regionally representative.
@@ -257,17 +246,25 @@ set.seed(13)
 test <- sample(1:40,8)
 test[8] <- 36 #Swap out the 3rd NEO for another random UP site
 predclass[test,1:6]
-
 ```
 
-Here is example code for the process of optimization of hyperparameters `mtry`, `maxnodes`, and  `ntrees` for the Fe limitation RF model. Optimization was done independently for each response variable.
+Here is example code for the process of optimization of hyperparameters `mtry`, `maxnodes`, and  `ntrees` for the Fe limitation RF model. Optimization was done independently for each response variable using the full dataset.
 
 ```{r hyperparameter optimization}
+#Build Fe dataset
+rfFedata <- cbind(Fe_TF=as.factor(predclass[,3]),na.roughfix(predclass[,c(2,10:108)]))
+
+#Invert the response variables to put YES limited first
+rfFedata$Fe_TF <- factor(rfFedata$Fe_TF,levels=c("Yes","No"))
+
+Fetrain <- rfFedata[-test,]
+Fetest <- rfFedata[test,]
+
 ## Define repeated cross validation with 5 folds and 10 repeats
 cv10 <- trainControl(method='repeatedcv', number=5, repeats=10)
 
 ## Tune mtry
-tuneGrid <- expand.grid(.mtry = seq(2,98,by=6))
+tuneGrid <- expand.grid(.mtry = seq(2,100,by=7))
 
 set.seed(8)
 
@@ -278,9 +275,8 @@ rf_mtry <- train(Fe_TF~.,data=rfFedata,
         tuneGrid = tuneGrid)
 
 print(rf_mtry)
-
 best_mtry <- rf_mtry$bestTune$mtry 
-#best_mtry <- 92
+  # 100 variables tried
 
 #Tune maxnodes
 store_maxnode <- list()
@@ -300,10 +296,9 @@ for (maxnodes in c(2:5)) {
     current_iteration <- toString(maxnodes)
     store_maxnode[[current_iteration]] <- rf_maxnode
 }
-results_mtry <- resamples(store_maxnode)
-summary(results_mtry)
-
-best_maxnode <- 4
+results_maxnode <- resamples(store_maxnode)
+summary(results_maxnode)
+  # 4 nodes (maximum Q3 without negative min)
 
 #Tune number of trees 
 store_ntree <- list()
@@ -323,5 +318,24 @@ for (ntree in seq(400,2000,by=100)) {
 }
 results_ntree <- resamples(store_ntree)
 summary(results_ntree)
-
+  # 500 trees
 ```
+
+```{r iron random forest model}
+set.seed(18)
+rfFe <- randomForest(Fe_TF~.,
+    data=Fetrain,mtry=100,maxnodes=4,ntree=500)
+rfFe
+varImpPlot(rfFe,n.var = 10)
+
+#Test data 75% accuracy (2 of 8 misclassified)
+testpred <- predict(rfFe,newdata = Fetest)
+confusionMatrix(testpred, Fetest$Fe_TF)
+
+#Partial dependence plots for top variables
+partialPlot(rfFe,rfFedata,INORGNWETDEP2008WS,"Yes",n.pt=100)
+partialPlot(rfFe,rfFedata,SRP_ugL,"Yes",log="x",n.pt=100)
+
+save(rfFe,file="rfFe.Rdata")
+```
+
