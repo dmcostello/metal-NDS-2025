@@ -45,6 +45,7 @@ NDSsoil <- read.csv(file="./raw data/soilmetalWS.csv") #Metal in soils data
 #Make merged dataset - 41 streams, 99 predictors
 land <- merge(LULC,NDSsoil[,c(2,4:24)],by="Stream")
 landWQ <- merge(land,WQ_NDS,by.x="Stream",by.y="Site")
+
 ```
 
 
@@ -53,6 +54,9 @@ landWQ <- merge(land,WQ_NDS,by.x="Stream",by.y="Site")
 bclass <- read.csv("./derived data/classify.csv")
 
 siteclass <- merge(sites[sites$Problem=="None",],bclass,by.x="Stream",by.y="Site",all.x=T)
+
+#Merge classification with environmental predictors
+predclass <- merge(bclass,landWQ,by.x="Site",by.y="Stream",all=T) 
 
 #Calculated response ratios
 RRchl <- read.csv("./derived data/RR_chl.csv")
@@ -66,6 +70,11 @@ RRgreen <- read.csv("./derived data/RR_chlorophyte.csv")
 load("./models/rfN.Rdata")
 load("./models/rfP.Rdata")
 load("./models/rfFe.Rdata")
+
+#Individual partial plots for Fe
+PDP_Ndep <- partialPlot(rfFe,rfFedata,INORGNWETDEP2008WS,"Yes",n.pt=100)
+PDP_P <- partialPlot(rfFe,rfFedata,SRP_ugL,"Yes",log="x",n.pt=100)
+
 load("./models/rfZn.Rdata")
 ```
 
@@ -293,7 +302,37 @@ RRplot(RRgreen,xmin=-4,xmax=6) #(d) Chlorophyte biomass
 ```
 
 ```{r Figure 4 - Iron RF model}
+layout(matrix(c(2,1,1,1, 2,1,1,1, 2,1,1,1, 0,3,3,3),4,4))
 
+#Main scatterplot
+par(mai=c(0.6,0.6,0,0))
+plot(INORGNWETDEP2008WS~SRP_ugL,data=rfFedata,log="x",col=c("orangered","black")[Fe_TF],xlim=c(1,100),ylim=c(2,8),las=1,pch=c(16,1)[Fe_TF],
+     xlab="DRP concentration (µg/L)",
+     ylab="Inorganic N wet deposition (kg N/ha/yr)",cex=1.8,xaxt="n",cex.lab=1.2)
+text(1,8,"a",cex=2)
+logaxis(0,3,1)
+legend("topright",legend=c("Fe limited","Not Fe limited"),pch=c(16,1),col=c("orangered","black"),pt.cex=1.8)
+abline(h=3.55,lty=2)
+abline(v=5.57,lty=2)
+
+#Partial dependency for DRP
+par(mai=c(0.2,0.6,0.2,0))
+plot(PDP_P$y~PDP_P$x,type="l",log="x",xlim=c(1,100),xaxt="n",las=1,
+     xlab="",ylim=c(-0.2,0.5),ylab="logit(Fe)",cex.lab=1.2)
+text(1,0.85,"b",cex=2)
+logaxis(0,3,1,labels=F)
+text(13,c(0.16,0.04),c("Probable","Fe limitation"),col="orangered")
+abline(v=5.57,lty=2)
+
+#Partial dependency for N dep
+par(mai=c(0.6,0.2,0,0.2))
+plot(PDP_Ndep$x~PDP_Ndep$y,type="l",ylim=c(2,8),yaxt="n",las=1,
+     ylab="",xlim=c(-0.5,0.5),xlab="logit(Fe)",cex.lab=1.2)
+text(-0.4,8,"c",cex=2)
+text(0,c(3.12,2.88),c("Probable","Fe limitation"),col="orangered")
+axis(2,labels=F)
+#mtext("-0.5",1,line=1,at=-0.5,cex=2/3)
+abline(h=3.55,lty=2)
 ```
 
 ```{r Figure 5 - Zinc RF model}
