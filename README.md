@@ -1,10 +1,8 @@
-
 # metal-NDS-2025
 
 Provisional data and code release for peer review.
 
-Costello et al. *Anemic streams: Iron and essential trace metals
-frequently limit primary producer biomass*.
+Costello et al. *Anemic streams: Iron and essential trace metals frequently limit primary producer biomass*.
 
 ## List of all files in repository
 
@@ -48,8 +46,7 @@ See `statistics.R` for information about derivation of these data.
 `classify.csv`
 
 **Model files**\
-Outputs of random forest models. See `statistics.R` for information
-about models.
+Outputs of random forest models. See `statistics.R` for information about models.
 
 `rfFe.Rdata`
 
@@ -102,8 +99,7 @@ about models.
 
 ### `WQ.csv`
 
-All values are means of 2-4 grab samples collected during the
-experimental period.
+All values are means of 2-4 grab samples collected during the experimental period.
 
 | Parameter | Definition                                          | Units |
 |-----------|-----------------------------------------------------|-------|
@@ -214,7 +210,4 @@ experimental period.
 
 ### `A_Fe.tif` and `A_Zn.tif`
 
-Raster of A horizon soils metals. Provided as 3 bands (RGB). Color
-represent concentrations in deciles. See Smith et al. 2014 *Geochemical
-and mineralogical maps for soils of the conterminous United States.*
-<https://doi.org/10.3133/ofr20141082>
+Raster of A horizon soils metals. Provided as 3 bands (RGB). Color represent concentrations in deciles. See Smith et al. 2014 *Geochemical and mineralogical maps for soils of the conterminous United States.* <https://doi.org/10.3133/ofr20141082>
