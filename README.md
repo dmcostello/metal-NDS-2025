@@ -14,24 +14,24 @@ Costello et al. *Anemic streams: Iron and essential trace metals frequently limi
 
 **Raw data files**
 
-`NDSsites.csv`
+[`NDSsites.csv`](https://github.com/dmcostello/metal-NDS-2025?tab=readme-ov-file#ndssitescsv)
 
-`chlorophyll.csv`
+[`chlorophyll.csv`](https://github.com/dmcostello/metal-NDS-2025?tab=readme-ov-file#chlorophyllcsv)
 
-`benthotorch.csv`
+[`benthotorch.csv`](https://github.com/dmcostello/metal-NDS-2025?tab=readme-ov-file#benthotorchcsv)
 
-`WQ.csv`
+[`WQ.csv`](https://github.com/dmcostello/metal-NDS-2025?tab=readme-ov-file#wqcsv)
 
-`LULC.csv`
+[`LULC.csv`](https://github.com/dmcostello/metal-NDS-2025?tab=readme-ov-file#lulccsv)
 
-`soilmetalWS.csv`
+[`soilmetalWS.csv`](https://github.com/dmcostello/metal-NDS-2025?tab=readme-ov-file#soilmetalwscsv)
 
-`A_Fe.tif`
+[`A_Fe.tif`](https://github.com/dmcostello/metal-NDS-2025?tab=readme-ov-file#a_fetif-and-a_zntif)
 
-`A_Zn.tif`
+[`A_Zn.tif`](https://github.com/dmcostello/metal-NDS-2025?tab=readme-ov-file#a_fetif-and-a_zntif)
 
 **Derived data files**\
-See `statistics.R` for information about derivation of these data.
+See `statistics.Rmd` for information about derivation of these data.
 
 `RR_chl.csv`
 
@@ -46,7 +46,7 @@ See `statistics.R` for information about derivation of these data.
 `classify.csv`
 
 **Model files**\
-Outputs of random forest models. See `statistics.R` for information about models.
+Outputs of random forest models. See `statistics.Rmd` for information about models.
 
 `rfFe.Rdata`
 
