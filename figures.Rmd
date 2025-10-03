@@ -76,6 +76,10 @@ PDP_Ndep <- partialPlot(rfFe,rfFedata,INORGNWETDEP2008WS,"Yes",n.pt=100)
 PDP_P <- partialPlot(rfFe,rfFedata,SRP_ugL,"Yes",log="x",n.pt=100)
 
 load("./models/rfZn.Rdata")
+
+#Individual partial plot for Zn
+PDP_PZn <- partialPlot(rfZn,rfZndata,SRP_ugL,"Yes",log="x") 
+
 ```
 
 
@@ -336,6 +340,20 @@ abline(h=3.55,lty=2)
 ```
 
 ```{r Figure 5 - Zinc RF model}
+#Partial dependency for DRP
+plot(PDP_PZn$y~PDP_PZn$x,type="l",xlim=c(1,100),xaxt="n",las=1,
+     xlab="DRP concentration (µg/L)",ylim=c(-0.7,0.1),
+     ylab="logit(Zn)",cex.lab=1.2,log="x")
+logaxis(0,2,1)
+
+#Overlay stripchart
+stripchart(rfZndata[rfZndata$Zn_TF=="No",'SRP_ugL'],col="black",
+           pch=1,at=-0.3,add=T,method = "jitter",cex=1.2,jitter = 0.1)
+stripchart(rfZndata[rfZndata$Zn_TF=="Yes",'SRP_ugL'],col="purple3",
+           pch=16,at=-0.3,add=T,method = "jitter",cex=1.2,jitter=0.1)
+
+
+legend("bottomright",legend=c("Zn limited","Not Zn limited"),pch=c(16,1),col=c("purple3","black"),pt.cex=1.2)
 
 ```
 
@@ -363,6 +381,85 @@ text(80,10,"r-squared = 0.58")
 ```
 
 ```{r Figure S4 - RF top 10 vars}
+varImpPlot(rfZn,n.var=10)
 
+#Function to trim importance variables
+clipimp <- function(model,var.no){
+  impdf<- data.frame("Gini" = importance(model),
+                     "Variable"=row.names(importance(model)))
+  impdf2 <- impdf[order(impdf$MeanDecreaseGini,decreasing=T),]
+  clipdf <- impdf2[1:var.no,]
+  clipdf
+  }
+
+#Generate top 10 importance for each response
+NI <- clipimp(rfN,10)
+PI <- clipimp(rfP,10)
+FeI <- clipimp(rfFe,10)
+ZnI <- clipimp(rfZn,10)
+
+#Clean variable names
+NIvar <- c("WS area",
+            expression("Stream NO"[3]),
+            "WS forest",
+            "Stream TN",
+            "WS soil OM",
+            "Stream TP",
+            "WS septic",
+            "WS air temp.",
+            expression("WS soil Fe"[2]*"O"[3]),
+            "WS mid urban")
+
+PIvar <- c("Stream Co",
+           "WS soil CaO",
+           expression("WS soil P"[2]*"O"[5]),
+           "WS soil perm,",
+           "Stream DRP",
+           "WS precip.",
+           "Stream TP:Fe",
+           "WS soil S",
+           "WS soil N",
+           expression("WS soil K"[2]*"O")
+           )
+
+FeIvar <- c(expression("WS N"[DEP]),
+            "Stream DRP",
+           "Stream Mo",
+           "WS area",
+           "Stream TP:Fe",
+           "WS deciduous",
+           "WS soil MgO",
+           "WS soil CaO",
+           "A hor. Zn",
+           "Stream pH"
+           )
+
+ZnIvar <- c("Stream DRP",
+            "Stream Co",
+            "WS soil CaO",
+            "WS anthro. N",
+            "WS N surplus",
+            expression(paste("Control chl",italic("a"))),
+            "Stream TN:Fe",
+            "Stream Mn",
+            expression("Stream NH"[4]),
+            expression("WS soil K"[2]*"O")
+            )
+
+#Function to create importance plot
+ImpPlot <- function(Idf,Ivar,panelname){
+  plot(rev(Idf$MeanDecreaseGini),seq(1,dim(Idf)[1]),cex=1.5,
+     yaxt="n",xlab="Mean decrease in Gini impurity",ylab="")
+  mtext(Ivar,at=seq(dim(Idf)[1],1),side=2,las=1,line=0.5)
+  text(min(Idf$MeanDecreaseGini),dim(Idf)[1],panelname,cex=1.5,adj=0)
+}
+
+#Final plots
+par(mfrow=c(2,2),mar=c(4,8,1,1))
+
+ImpPlot(NI,NIvar,"a. Nitrogen")
+ImpPlot(PI,PIvar,"b. Phosphorus")
+ImpPlot(FeI,FeIvar,"c. Iron")
+ImpPlot(ZnI,ZnIvar,"d. Zinc")
 ```
 
