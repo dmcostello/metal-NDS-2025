@@ -12,6 +12,7 @@ library(ggspatial)
 library(rnaturalearth)
 library(cowplot)
 library(terra)
+library(randomForest)
 ```
 
 ### Load data
@@ -72,13 +73,13 @@ load("./models/rfP.Rdata")
 load("./models/rfFe.Rdata")
 
 #Individual partial plots for Fe
-PDP_Ndep <- partialPlot(rfFe,rfFedata,INORGNWETDEP2008WS,"Yes",n.pt=100)
-PDP_P <- partialPlot(rfFe,rfFedata,SRP_ugL,"Yes",log="x",n.pt=100)
+PDP_Ndep <- partialPlot(rfFe,predclass,INORGNWETDEP2008WS,"Yes",n.pt=100)
+PDP_P <- partialPlot(rfFe,predclass,SRP_ugL,"Yes",log="x",n.pt=100)
 
 load("./models/rfZn.Rdata")
 
 #Individual partial plot for Zn
-PDP_PZn <- partialPlot(rfZn,rfZndata,SRP_ugL,"Yes",log="x") 
+PDP_PZn <- partialPlot(rfZn,predclass,SRP_ugL,"Yes",log="x") 
 
 ```
 
@@ -310,7 +311,7 @@ layout(matrix(c(2,1,1,1, 2,1,1,1, 2,1,1,1, 0,3,3,3),4,4))
 
 #Main scatterplot
 par(mai=c(0.6,0.6,0,0))
-plot(INORGNWETDEP2008WS~SRP_ugL,data=rfFedata,log="x",col=c("orangered","black")[Fe_TF],xlim=c(1,100),ylim=c(2,8),las=1,pch=c(16,1)[Fe_TF],
+plot(INORGNWETDEP2008WS~SRP_ugL,data=predclass,log="x",col=c("orangered","black")[Fe_TF],xlim=c(1,100),ylim=c(2,8),las=1,pch=c(16,1)[Fe_TF],
      xlab="DRP concentration (µg/L)",
      ylab="Inorganic N wet deposition (kg N/ha/yr)",cex=1.8,xaxt="n",cex.lab=1.2)
 text(1,8,"a",cex=2)
@@ -322,39 +323,38 @@ abline(v=5.57,lty=2)
 #Partial dependency for DRP
 par(mai=c(0.2,0.6,0.2,0))
 plot(PDP_P$y~PDP_P$x,type="l",log="x",xlim=c(1,100),xaxt="n",las=1,
-     xlab="",ylim=c(-0.2,0.5),ylab="logit(Fe)",cex.lab=1.2)
+     xlab="",ylim=c(-0.4,0.2),ylab="logit(Fe)",cex.lab=1.2)
 text(1,0.85,"b",cex=2)
 logaxis(0,3,1,labels=F)
-text(13,c(0.16,0.04),c("Probable","Fe limitation"),col="orangered")
+text(13,c(0,-0.12),c("Probable","Fe limitation"),col="orangered")
 abline(v=5.57,lty=2)
 
 #Partial dependency for N dep
 par(mai=c(0.6,0.2,0,0.2))
 plot(PDP_Ndep$x~PDP_Ndep$y,type="l",ylim=c(2,8),yaxt="n",las=1,
-     ylab="",xlim=c(-0.5,0.5),xlab="logit(Fe)",cex.lab=1.2)
+     ylab="",xlim=c(-0.5,0.4),xlab="logit(Fe)",cex.lab=1.2)
 text(-0.4,8,"c",cex=2)
-text(0,c(3.12,2.88),c("Probable","Fe limitation"),col="orangered")
+text(-0.1,c(3.12,2.88),c("Probable","Fe limitation"),col="orangered")
 axis(2,labels=F)
-#mtext("-0.5",1,line=1,at=-0.5,cex=2/3)
 abline(h=3.55,lty=2)
+
 ```
 
 ```{r Figure 5 - Zinc RF model}
 #Partial dependency for DRP
 plot(PDP_PZn$y~PDP_PZn$x,type="l",xlim=c(1,100),xaxt="n",las=1,
-     xlab="DRP concentration (µg/L)",ylim=c(-0.7,0.1),
+     xlab="DRP concentration (µg/L)",ylim=c(-0.8,0),
      ylab="logit(Zn)",cex.lab=1.2,log="x")
 logaxis(0,2,1)
 
 #Overlay stripchart
-stripchart(rfZndata[rfZndata$Zn_TF=="No",'SRP_ugL'],col="black",
-           pch=1,at=-0.3,add=T,method = "jitter",cex=1.2,jitter = 0.1)
-stripchart(rfZndata[rfZndata$Zn_TF=="Yes",'SRP_ugL'],col="purple3",
-           pch=16,at=-0.3,add=T,method = "jitter",cex=1.2,jitter=0.1)
+stripchart(predclass[predclass$Zn_TF=="No",'SRP_ugL'],col="black",
+           pch=1,at=-0.3,add=T,method = "jitter",cex=1.2,jitter = 0.2)
+stripchart(predclass[predclass$Zn_TF=="Yes",'SRP_ugL'],col="purple3",
+           pch=16,at=-0.3,add=T,method = "jitter",cex=1.2,jitter=0.2 )
 
 
 legend("bottomright",legend=c("Zn limited","Not Zn limited"),pch=c(16,1),col=c("purple3","black"),pt.cex=1.2)
-
 ```
 
 ```{r Figure S3 - field v lab biomass}
