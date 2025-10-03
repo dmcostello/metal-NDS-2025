@@ -82,7 +82,7 @@ Outputs of random forest models. See `statistics.Rmd` for information about mode
 | Year      | Year experiment was completed |          |
 | Sample_ID | Unique sample ID              |          |
 | Treatment | NDS nutrient treatment        |          |
-| CHLA      | Chlorophyll a biomass         | µg/cm^2^ |
+| CHLA      | Chlorophyll a biomass         | µg/cm\^2 |
 
 ### `benthotorch.csv`
 
@@ -91,11 +91,11 @@ Outputs of random forest models. See `statistics.Rmd` for information about mode
 | Site      | Common name of stream           |          |
 | Year      | Year experiment was completed   |          |
 | Sample_ID | Unique sample ID                |          |
-| Diatoms   | Diatom biomass                  | µg/cm^2^ |
-| Greens    | Chlorophyte biomass             | µg/cm^2^ |
-| Cyanos    | Cyanobacteria biomass           | µg/cm^2^ |
+| Diatoms   | Diatom biomass                  | µg/cm\^2 |
+| Greens    | Chlorophyte biomass             | µg/cm\^2 |
+| Cyanos    | Cyanobacteria biomass           | µg/cm\^2 |
 | Treatment | NDS nutrient treatment          |          |
-| Total     | Total biomass from all pigments | µg/cm^2^ |
+| Total     | Total biomass from all pigments | µg/cm\^2 |
 
 ### `WQ.csv`
 
@@ -129,7 +129,7 @@ All values are means of 2-4 grab samples collected during the experimental perio
 
 | Parameter | Definition | Units |
 |------------------------|------------------------|------------------------|
-| WSAREASQKM | Watershed area | km^2^ |
+| WSAREASQKM | Watershed area | km\^2 |
 | SANDWS | Soil sand content | \% |
 | CLAYWS | Soil clay content | \% |
 | MANUREWS | Mean manure application rate | kg/ha/yr |
@@ -137,16 +137,16 @@ All values are means of 2-4 grab samples collected during the experimental perio
 | CBNFWS | Cultivated biological nitrogen fixation mean rate | kg/ha/yr |
 | CHEMWS | Water chemistry index score | Unitless |
 | BFIWS | Base flow index | \% |
-| NABD_DENSWS | NABD dam density | count/km^2^ |
+| NABD_DENSWS | NABD dam density | count/km\^2 |
 | RUNOFFWS | Mean runoff | mm |
-| NPDESDENSWS | NPDES site density | count/km^2^ |
-| SUPERFUNDDENSWS | Superfund site density | count/km^2^ |
-| TRIDENSWS | Density of toxic release inventory sites | count/km^2^ |
+| NPDESDENSWS | NPDES site density | count/km\^2 |
+| SUPERFUNDDENSWS | Superfund site density | count/km\^2 |
+| TRIDENSWS | Density of toxic release inventory sites | count/km\^2 |
 | PRECIP8110WS | 30-year mean annual precipitation | mm |
 | TMEAN8110WS | 30-year mean annual air temperature | °Celsius |
-| WWTPALLDENSWS | All wastewater treatment density | count/km^2^ |
-| SW_FLUXWS | Surface water nitrogen flux | kg N/km^2^ |
-| INORGNWETDEP2008WS | Precipitation-weighted mean annual wet deposition of NH~3~+NO~3~ | kg/ha/yr |
+| WWTPALLDENSWS | All wastewater treatment density | count/km\^2 |
+| SW_FLUXWS | Surface water nitrogen flux | kg N/km\^2 |
+| INORGNWETDEP2008WS | Precipitation-weighted mean annual wet deposition of NH3+NO3 | kg/ha/yr |
 | SN2008WS | Annual mean sulfur and nitrogen wet deposition | kg/ha/yr |
 | NWS | Mean lithological nitrogen | \% |
 | PCTDECID2019WS | Deciduous forest area | \% |
@@ -170,14 +170,14 @@ All values are means of 2-4 grab samples collected during the experimental perio
 | PERMWS | Mean permeability | \% |
 | RCKDEPWS | Mean bedrock depth | cm |
 | OMWS | Mean organic matter content in surface soil | \% |
-| MINEDENSWS | Mine density | count/km^2^ |
+| MINEDENSWS | Mine density | count/km\^2 |
 | SEPTICWS | Septic system density | kg/ha/yr |
 | NANIWS | Net anthropogenic nitrogen | kg/ha/yr |
 | NSURPWS | Nitrogen surplus | \% |
 | RDDENSWS | Mean road density | \% |
-| COALMINEDENSWS | Coal mine density | count/km^2^ |
+| COALMINEDENSWS | Coal mine density | count/km\^2 |
 | PCTIMP2019WS | Mean imperviousness | \% |
-| PTSOURCE | Point source density – Sum of coal mine, mine, waste water treatment plant, NPDES site, superfund site, and toxic release inventory site density | count/km^2^ |
+| PTSOURCE | Point source density – Sum of coal mine, mine, waste water treatment plant, NPDES site, superfund site, and toxic release inventory site density | count/km\^2 |
 | PCTURB | Sum of high intensity, medium intensity, low intensity, and open space land use | \% |
 | PCTFOR | Total forest cover, combining mixed forest cover, evergreen cover, and deciduous cover | \% |
 | PCTAG |  | Total agriculture land cover, sum of crop cover and hay/pasture cover |
