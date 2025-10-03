@@ -1,8 +1,3 @@
----
-editor_options: 
-  markdown: 
-    wrap: 72
----
 
 # metal-NDS-2025
 
@@ -71,7 +66,7 @@ about models.
 ### `NDSsites.csv`
 
 | Parameter    | Definition                          | Units                   |
-|--------------|-------------------------------------|-------------------------|
+|------------------|------------------------------------|------------------|
 | Stream       | Common name of stream               |                         |
 | Region       | Common name for region of study     |                         |
 | Year         | Year experiment was completed       |                         |
@@ -137,7 +132,7 @@ experimental period.
 ### `LULC.csv`
 
 | Parameter | Definition | Units |
-|----|----|----|
+|------------------------|------------------------|------------------------|
 | WSAREASQKM | Watershed area | km^2^ |
 | SANDWS | Soil sand content | \% |
 | CLAYWS | Soil clay content | \% |
