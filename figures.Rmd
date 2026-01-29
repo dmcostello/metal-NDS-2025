@@ -43,6 +43,19 @@ LULC <- read.csv(file="./raw data/LULC.csv") #Land use land cover data
 
 NDSsoil <- read.csv(file="./raw data/soilmetalWS.csv") #Metal in soils data
 
+#Impute missing WQ data
+impWQ <- mice(WQ_NDS,m=1,maxit=50,meth='pmm',seed=111,print=F)
+impWQ$imp$Mo_ugL
+
+#New dataset with imputed data
+WQ_NDS_comp <- complete(impWQ)
+
+#Calculate ratios
+WQ_NDS_comp$TNTP <- (WQ_NDS_comp$TN_ugL/14)/(WQ_NDS_comp$TP_ugL/31)
+WQ_NDS_comp$NO3SRP <- (WQ_NDS_comp$NO3_ugL/14)/(WQ_NDS_comp$SRP_ugL/31)
+WQ_NDS_comp$TNFe <- (WQ_NDS_comp$TN_ugL/14)/(WQ_NDS_comp$Fe_ugL/55.845)
+WQ_NDS_comp$TPFe <- (WQ_NDS_comp$TP_ugL/31)/(WQ_NDS_comp$Fe_ugL/55.845)
+
 #Make merged dataset - 41 streams, 99 predictors
 land <- merge(LULC,NDSsoil[,c(2,4:24)],by="Stream")
 landWQ <- merge(land,WQ_NDS,by.x="Stream",by.y="Site")
@@ -311,47 +324,46 @@ layout(matrix(c(2,1,1,1, 2,1,1,1, 2,1,1,1, 0,3,3,3),4,4))
 
 #Main scatterplot
 par(mai=c(0.6,0.6,0,0))
-plot(INORGNWETDEP2008WS~SRP_ugL,data=predclass,log="x",col=c("orangered","black")[Fe_TF],xlim=c(1,100),ylim=c(2,8),las=1,pch=c(16,1)[Fe_TF],
+plot(INORGNWETDEP2008WS~SRP_ugL,data=predclass,log="x",col=c("black","orangered")[factor(Fe_TF)],xlim=c(1,100),ylim=c(2,8),las=1,pch=c(1,16)[factor(Fe_TF)],
      xlab="DRP concentration (µg/L)",
      ylab="Inorganic N wet deposition (kg N/ha/yr)",cex=1.8,xaxt="n",cex.lab=1.2)
 text(1,8,"a",cex=2)
 logaxis(0,3,1)
 legend("topright",legend=c("Fe limited","Not Fe limited"),pch=c(16,1),col=c("orangered","black"),pt.cex=1.8)
-abline(h=3.55,lty=2)
+abline(h=3.6,lty=2)
 abline(v=5.57,lty=2)
 
 #Partial dependency for DRP
 par(mai=c(0.2,0.6,0.2,0))
 plot(PDP_P$y~PDP_P$x,type="l",log="x",xlim=c(1,100),xaxt="n",las=1,
-     xlab="",ylim=c(-0.4,0.2),ylab="logit(Fe)",cex.lab=1.2)
-text(1,0.85,"b",cex=2)
+     xlab="",ylim=c(-0.2,0.4),ylab="logit(Fe)",cex.lab=1.2)
+text(1,0.35,"b",cex=2)
 logaxis(0,3,1,labels=F)
-text(13,c(0,-0.12),c("Probable","Fe limitation"),col="orangered")
+text(13,c(0,0.12),c("Probable","Fe limitation"),col="orangered")
 abline(v=5.57,lty=2)
 
 #Partial dependency for N dep
 par(mai=c(0.6,0.2,0,0.2))
 plot(PDP_Ndep$x~PDP_Ndep$y,type="l",ylim=c(2,8),yaxt="n",las=1,
-     ylab="",xlim=c(-0.5,0.4),xlab="logit(Fe)",cex.lab=1.2)
+     ylab="",xlim=c(-0.5,0.6),xlab="logit(Fe)",cex.lab=1.2)
 text(-0.4,8,"c",cex=2)
-text(-0.1,c(3.12,2.88),c("Probable","Fe limitation"),col="orangered")
+text(0,c(3.12,2.88),c("Probable","Fe limitation"),col="orangered")
 axis(2,labels=F)
-abline(h=3.55,lty=2)
-
+abline(h=3.6,lty=2)
 ```
 
 ```{r Figure 5 - Zinc RF model}
 #Partial dependency for DRP
 plot(PDP_PZn$y~PDP_PZn$x,type="l",xlim=c(1,100),xaxt="n",las=1,
-     xlab="DRP concentration (µg/L)",ylim=c(-0.8,0),
+     xlab="DRP concentration (µg/L)",ylim=c(-0.7,0.2),
      ylab="logit(Zn)",cex.lab=1.2,log="x")
 logaxis(0,2,1)
 
 #Overlay stripchart
 stripchart(predclass[predclass$Zn_TF=="No",'SRP_ugL'],col="black",
-           pch=1,at=-0.3,add=T,method = "jitter",cex=1.2,jitter = 0.2)
+           pch=1,at=-0.2,add=T,method = "jitter",cex=1.2,jitter = 0.2)
 stripchart(predclass[predclass$Zn_TF=="Yes",'SRP_ugL'],col="purple3",
-           pch=16,at=-0.3,add=T,method = "jitter",cex=1.2,jitter=0.2 )
+           pch=16,at=-0.2,add=T,method = "jitter",cex=1.2,jitter=0.2 )
 
 
 legend("bottomright",legend=c("Zn limited","Not Zn limited"),pch=c(16,1),col=c("purple3","black"),pt.cex=1.2)
@@ -400,50 +412,50 @@ ZnI <- clipimp(rfZn,10)
 
 #Clean variable names
 NIvar <- c("WS area",
-            expression("Stream NO"[3]),
             "WS forest",
-            "Stream TN",
-            "WS soil OM",
-            "Stream TP",
+            expression("Stream NO"[3]),
             "WS septic",
-            "WS air temp.",
-            expression("WS soil Fe"[2]*"O"[3]),
-            "WS mid urban")
+            "WS mid urban",
+           "WS pasture",
+            "Stream TP:Fe",
+           "Water chem index",
+           "Stream Mg",
+            "Stream TP")
 
-PIvar <- c("Stream Co",
-           "WS soil CaO",
+PIvar <- c("WS soil CaO",
            expression("WS soil P"[2]*"O"[5]),
-           "WS soil perm,",
-           "Stream DRP",
-           "WS precip.",
+           "Stream Ni",
+           "Stream Co",
            "Stream TP:Fe",
+           "WS soil perm,",
+           expression("WS soil K"[2]*"O"),
            "WS soil S",
            "WS soil N",
-           expression("WS soil K"[2]*"O")
+           "WS septic"
            )
 
 FeIvar <- c(expression("WS N"[DEP]),
             "Stream DRP",
            "Stream Mo",
            "WS area",
-           "Stream TP:Fe",
            "WS deciduous",
-           "WS soil MgO",
            "WS soil CaO",
+           "Stream Mn",
            "A hor. Zn",
-           "Stream pH"
+           "WS soil MgO",
+           "Stream Cu"
            )
 
 ZnIvar <- c("Stream DRP",
-            "Stream Co",
             "WS soil CaO",
+            expression(paste("Control chl",italic("a"))),
             "WS anthro. N",
             "WS N surplus",
-            expression(paste("Control chl",italic("a"))),
-            "Stream TN:Fe",
             "Stream Mn",
+            "Stream Co",
+            expression("WS soil K"[2]*"O"),
             expression("Stream NH"[4]),
-            expression("WS soil K"[2]*"O")
+            expression("Stream NO"[3]*":DRP")
             )
 
 #Function to create importance plot
