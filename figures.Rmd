@@ -418,7 +418,7 @@ NIvar <- c("WS area",
             "WS mid urban",
            "WS pasture",
             "Stream TP:Fe",
-           "Water chem index",
+           "Chem. index",
            "Stream Mg",
             "Stream TP")
 
@@ -427,7 +427,7 @@ PIvar <- c("WS soil CaO",
            "Stream Ni",
            "Stream Co",
            "Stream TP:Fe",
-           "WS soil perm,",
+           "WS soil perm",
            expression("WS soil K"[2]*"O"),
            "WS soil S",
            "WS soil N",
@@ -467,11 +467,10 @@ ImpPlot <- function(Idf,Ivar,panelname){
 }
 
 #Final plots
-par(mfrow=c(2,2),mar=c(4,8,1,1))
-
 ImpPlot(NI,NIvar,"a. Nitrogen")
 ImpPlot(PI,PIvar,"b. Phosphorus")
 ImpPlot(FeI,FeIvar,"c. Iron")
 ImpPlot(ZnI,ZnIvar,"d. Zinc")
+
 ```
 
