@@ -9,6 +9,7 @@ output: html_document
 require(dplyr)
 require(randomForest)
 require(caret)
+require(mice)
 ```
 
 ### Load data
@@ -39,9 +40,22 @@ LULC <- read.csv(file="./raw data/LULC.csv") #Land use land cover data
 
 NDSsoil <- read.csv(file="./raw data/soilmetalWS.csv") #Metal in soils data
 
+#Impute missing WQ data
+impWQ <- mice(WQ_NDS,m=1,maxit=50,meth='pmm',seed=111,print=F)
+impWQ$imp$Mo_ugL
+
+#New dataset with imputed data
+WQ_NDS_comp <- complete(impWQ)
+
+#Calculate ratios
+WQ_NDS_comp$TNTP <- (WQ_NDS_comp$TN_ugL/14)/(WQ_NDS_comp$TP_ugL/31)
+WQ_NDS_comp$NO3SRP <- (WQ_NDS_comp$NO3_ugL/14)/(WQ_NDS_comp$SRP_ugL/31)
+WQ_NDS_comp$TNFe <- (WQ_NDS_comp$TN_ugL/14)/(WQ_NDS_comp$Fe_ugL/55.845)
+WQ_NDS_comp$TPFe <- (WQ_NDS_comp$TP_ugL/31)/(WQ_NDS_comp$Fe_ugL/55.845)
+
 #Make merged dataset - 41 streams, 99 predictors
 land <- merge(LULC,NDSsoil[,c(2,4:24)],by="Stream")
-landWQ <- merge(land,WQ_NDS,by.x="Stream",by.y="Site")
+landWQ <- merge(land,WQ_NDS_comp,by.x="Stream",by.y="Site")
 ```
 
 ```{r load derived data}
@@ -252,7 +266,7 @@ Here is example code for the process of optimization of hyperparameters `mtry`, 
 
 ```{r hyperparameter optimization}
 #Build dataset
-tunedata <- cbind(resp=as.factor(predclass[,3]),na.roughfix(predclass[,c(2,10:108)]))
+tunedata <- cbind(resp=as.factor(predclass[,6]),predclass[,c(2,10:108)])
 
 ## Define repeated cross validation with 5 folds and 10 repeats
 cv10 <- trainControl(method='repeatedcv', number=5, repeats=10)
@@ -270,7 +284,7 @@ rf_mtry <- train(resp~.,data=tunedata,
 
 print(rf_mtry)
 best_mtry <- rf_mtry$bestTune$mtry 
-  # 100 variables tried
+  # 65 variables tried is optimal
 
 #Tune maxnodes
 store_maxnode <- list()
@@ -292,7 +306,7 @@ for (maxnodes in c(2:5)) {
 }
 results_maxnode <- resamples(store_maxnode)
 summary(results_maxnode)
-  # 4 nodes (maximum Q3 without negative min)
+  # 5 nodes (maximum mean)
 
 #Tune number of trees 
 store_ntree <- list()
@@ -305,19 +319,19 @@ for (ntree in seq(400,2000,by=100)) {
         tuneGrid = tuneGrid,
         trControl = cv10,
         importance = TRUE,
-        maxnodes = 2,
+        maxnodes = 5,
         ntree = ntree)
     current_iteration <- toString(ntree)
     store_ntree[[current_iteration]] <- rf_maxtree
 }
 results_ntree <- resamples(store_ntree)
 summary(results_ntree)
-  # 500 trees
+  # 600 trees
 ```
 
 ```{r iron random forest model}
 #Build Fe dataset
-rfFedata <- cbind(Fe_TF=as.factor(predclass[,'Fe_TF']),na.roughfix(predclass[,c(2,10:108)]))
+rfFedata <- cbind(Fe_TF=as.factor(predclass[,'Fe_TF']),predclass[,c(2,10:108)])
 
 #Invert the response variables to put YES limited first
 rfFedata$Fe_TF <- factor(rfFedata$Fe_TF,levels=c("Yes","No"))
@@ -326,13 +340,13 @@ rfFedata$Fe_TF <- factor(rfFedata$Fe_TF,levels=c("Yes","No"))
 Fetrain <- rfFedata[-test,]
 Fetest <- rfFedata[test,]
 
-#Run rf model and evaluate performance (33% misclass)
-set.seed(18)
+#Run rf model and evaluate performance (24% misclass)
+set.seed(71)
 rfFe <- randomForest(Fe_TF~.,
-    data=Fetrain,mtry=100,maxnodes=4,ntree=500)
+    data=Fetrain,mtry=90,maxnodes=4,ntree=700)
 rfFe
 
-#Test data 75% accuracy (2 of 8 misclassified)
+#Test data 75% accuracy (3 of 8 misclassified)
 testpred <- predict(rfFe,newdata = Fetest)
 confusionMatrix(testpred, Fetest$Fe_TF)
 
@@ -342,12 +356,12 @@ varImpPlot(rfFe,n.var = 10)
 partialPlot(rfFe,rfFedata,INORGNWETDEP2008WS,"Yes",n.pt=100)
 partialPlot(rfFe,rfFedata,SRP_ugL,"Yes",log="x",n.pt=100)
 
-#save(rfFe,file="rfFe.Rdata")
+#save(rfFe,file="./models/rfFe.Rdata")
 ```
 
 ```{r nitrogen random forest model}
 #Build N dataset
-rfNdata <- cbind(N_TF=as.factor(predclass[,'N_TF']),na.roughfix(predclass[,c(2,10:108)]))
+rfNdata <- cbind(N_TF=as.factor(predclass[,'N_TF']),predclass[,c(2,10:108)])
 
 #Invert the response variables to put YES limited first
 rfNdata$N_TF <- factor(rfNdata$N_TF,levels=c("Yes","No"))
@@ -356,25 +370,25 @@ rfNdata$N_TF <- factor(rfNdata$N_TF,levels=c("Yes","No"))
 Ntrain <- rfNdata[-test,]
 Ntest <- rfNdata[test,]
 
-#Run rf model and evaluate performance (36% misclass)
+#Run rf model and evaluate performance (30% misclass)
 set.seed(9)
 rfN <- randomForest(N_TF~.,
-    data=Ntrain,mtry=10,maxnodes=5,ntree=400)
+    data=Ntrain,mtry=10,maxnodes=5,ntree=1100)
 rfN
 
-#Test data 75% accuracy (1 of 8 misclassified)
+#Test data 75% accuracy (2 of 8 misclassified)
 testpred <- predict(rfN,newdata = Ntest)
 confusionMatrix(testpred, Ntest$N_TF)
 
 #Partial dependence plots for top variables
 varImpPlot(rfN,n.var = 10)
 
-#save(rfN,file="rfN.Rdata")
+#save(rfN,file="./models/rfN.Rdata")
 ```
 
 ```{r phosphorus random forest model}
 #Build Fe dataset
-rfPdata <- cbind(P_TF=as.factor(predclass[,'P_TF']),na.roughfix(predclass[,c(2,10:108)]))
+rfPdata <- cbind(P_TF=as.factor(predclass[,'P_TF']),predclass[,c(2,10:108)])
 
 #Invert the response variables to put YES limited first
 rfPdata$P_TF <- factor(rfPdata$P_TF,levels=c("Yes","No"))
@@ -383,25 +397,25 @@ rfPdata$P_TF <- factor(rfPdata$P_TF,levels=c("Yes","No"))
 Ptrain <- rfPdata[-test,]
 Ptest <- rfPdata[test,]
 
-#Run rf model and evaluate performance
+#Run rf model and evaluate performance (45% misclass)
 set.seed(7)
 rfP <- randomForest(P_TF~.,
-    data=Ptrain,mtry=10,maxnodes=3,ntree=1500)
+    data=Ptrain,mtry=45,maxnodes=3,ntree=1500)
 rfP
 
-#Test data 75% accuracy (1 of 8 misclassified)
+#Test data 75% accuracy (4 of 8 misclassified)
 testpred <- predict(rfP,newdata = Ptest)
 confusionMatrix(testpred, Ptest$P_TF)
 
 #Partial dependence plots for top variables
 varImpPlot(rfP,n.var = 10)
 
-#save(rfP,file="rfP.Rdata")
+#save(rfP,file="./models/rfP.Rdata")
 ```
 
 ```{r zinc random forest model}
 #Build Zn dataset
-rfZndata <- cbind(Zn_TF=as.factor(predclass[,'Zn_TF']),na.roughfix(predclass[,c(2,10:108)]))
+rfZndata <- cbind(Zn_TF=as.factor(predclass[,'Zn_TF']),predclass[,c(2,10:108)])
 
 #Invert the response variables to put YES limited first
 rfZndata$Zn_TF <- factor(rfZndata$Zn_TF,levels=c("Yes","No"))
@@ -410,10 +424,10 @@ rfZndata$Zn_TF <- factor(rfZndata$Zn_TF,levels=c("Yes","No"))
 Zntrain <- rfZndata[-test,]
 Zntest <- rfZndata[test,]
 
-#Run rf model and evaluate performance
+#Run rf model and evaluate performance (21% misclass)
 set.seed(30)
 rfZn <- randomForest(Zn_TF~.,
-    data=Zntrain,mtry=100,maxnodes=4,ntree=500)
+    data=Zntrain,mtry=65,maxnodes=5,ntree=600)
 rfZn
 
 #Test data 75% accuracy (1 of 8 misclassified)
@@ -423,6 +437,6 @@ confusionMatrix(testpred, Zntest$Zn_TF)
 #Partial dependence plots for top variables
 varImpPlot(rfZn,n.var = 10)
 
-#save(rfZn,file="rfZn.Rdata")
+#save(rfZn,file="./models/rfZn.Rdata")
 ```
 
