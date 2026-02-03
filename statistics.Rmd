@@ -340,7 +340,7 @@ rfFedata$Fe_TF <- factor(rfFedata$Fe_TF,levels=c("Yes","No"))
 Fetrain <- rfFedata[-test,]
 Fetest <- rfFedata[test,]
 
-#Run rf model and evaluate performance (24% misclass)
+#Run rf model and evaluate performance (30% misclass)
 set.seed(71)
 rfFe <- randomForest(Fe_TF~.,
     data=Fetrain,mtry=90,maxnodes=4,ntree=700)
