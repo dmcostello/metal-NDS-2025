@@ -1,6 +1,6 @@
 # metal-NDS-2025
 
-Provisional data and code release for peer review.
+Data and code release for:
 
 Costello et al. *Anemic streams: Iron and essential trace metals frequently limit primary producer biomass*.
 
