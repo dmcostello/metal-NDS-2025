@@ -6,10 +6,10 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-require(dplyr)
-require(randomForest)
-require(caret)
-require(mice)
+library(dplyr)
+library(randomForest)
+library(caret)
+library(mice)
 ```
 
 ### Load data

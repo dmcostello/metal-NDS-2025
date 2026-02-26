@@ -10,9 +10,12 @@ library(dplyr)
 library(ggplot2)
 library(ggspatial)
 library(rnaturalearth)
+library(rnaturalearthdata)
+library(rnaturalearthhires)
 library(cowplot)
 library(terra)
 library(randomForest)
+library(mice)
 ```
 
 ### Load data
@@ -58,7 +61,7 @@ WQ_NDS_comp$TPFe <- (WQ_NDS_comp$TP_ugL/31)/(WQ_NDS_comp$Fe_ugL/55.845)
 
 #Make merged dataset - 41 streams, 99 predictors
 land <- merge(LULC,NDSsoil[,c(2,4:24)],by="Stream")
-landWQ <- merge(land,WQ_NDS,by.x="Stream",by.y="Site")
+landWQ <- merge(land,WQ_NDS_comp,by.x="Stream",by.y="Site")
 
 ```
 
@@ -127,8 +130,8 @@ RGBrast <- function(file){
   rgb_df
   }
 
-FeAr <- RGBrast("A_Fe.tif")
-ZnAr <- RGBrast("A_Zn.tif")
+FeAr <- RGBrast("./raw data/A_Fe.tif")
+ZnAr <- RGBrast("./raw data/A_Zn.tif")
 ```
 
 ```{r log axis}
@@ -182,6 +185,38 @@ RRplot <- function(RRdata,xmin=-1,xmax=3){
   #Add text showing the # of co-limited streams/total streams
   for(i in 21:27){text(xmax,(7:1)[i-20],paste(sum(RRdata[,i] %in%
                   intopt,na.rm=T), "/",sum(!is.na(RRdata[,i])),sep=""),adj=1)}
+}
+
+#Similar function but for paneling without y-axis labels
+RRplot2 <- function(RRdata,xmin=-1,xmax=3){ 
+par(pty="m",mar=c(4,0,2,2))
+
+stripchart(RRdata[,3:13],pch=1,cex=0,las=1,xlim=c(xmin,xmax),ylim=c(0.5,11.5),xlab="ln response ratio",group.names = "")
+rect(-0.326,0,0.326,15,col="grey90",border=NA)
+abline(v=0)
+
+#Single element treatments
+for(i in 1:4){points(RRdata[,2+i],11-i+jitter(rep(1,41),factor=5),cex=1.5,
+                     col=ifelse(RRdata[,2+i]>0.326,"royalblue","gray30"))}
+
+text(xmax,11.4,"SINGLE LIMIT",adj=1)
+for(i in 3:6){text(xmax,(11:8)[i-2],paste(sum(RRdata[,i]>0.326 ,na.rm=T),
+                                  "/",sum(!is.na(RRdata[,i])),sep=""),adj=1)}
+#Interactions
+for(i in c(1:5,7)){points(RRdata[,6+i],7-i+jitter(rep(1,41),factor=5),cex=1.5,
+                     col=ifelse(RRdata[,20+i] %in% intopt,"goldenrod2","gray30")
+                     #,pch=ifelse(RRdata[,20+i] %in% intopt,16,1)
+                     )}
+  #Only did NxFe for 2022
+with(RRchl[RRdata$Site %in% good22,],
+             points(NFe,1+jitter(rep(1,14),factor=5),cex=1.5,
+                     col=ifelse(NxFecl %in% intopt,"goldenrod2","gray30")
+                    #,pch=ifelse(NxFecl %in% intopt,16,1)
+                    ))
+
+text(xmax,7.4,"CO-LIMIT",adj=1)
+for(i in 21:27){text(xmax,(7:1)[i-20],paste(sum(RRdata[,i] %in% intopt,na.rm=T),
+                                  "/",sum(!is.na(RRdata[,i])),sep=""),adj=1)}
 }
 
 ```
@@ -298,6 +333,7 @@ maplim <- function(limvar,limcol,legname,bgmap=NULL){
   }
 }
 
+#pdf("Figure_1.pdf",width=10,height=4.5)
 plot_grid(
   maplim("N_TF","green3","N"),
   maplim("P_TF","dodgerblue2","P"),
@@ -305,21 +341,34 @@ plot_grid(
   maplim('Zn_TF',"purple3","Zn",bgmap=ZnAr),
 nrow=1,labels = "auto"
   )
-
+#dev.off()
 ```
 
 ```{r Figure 2 - Chla response}
+pdf("Figure_2.pdf",height=6,width=4.5)
 RRplot(RRchl,xmin=-1,xmax=4)
+dev.off()
+
 ```
 
 ```{r Figure 3 - Community response}
-RRplot(RRTot,xmax=4) #(a) Total BenthoTorch biomass 
-RRplot(RRdiatom,xmax=4) #(b) Diatom biomass 
-RRplot(RRcyano,xmax=4) #(c) Cyanobacteria biomass 
-RRplot(RRgreen,xmin=-4,xmax=6) #(d) Chlorophyte biomass
+pdf(file="Figure_3.pdf",height=4.5,width=10)
+par(mfrow=c(1,4),oma=c(0,5,0,0))
+RRplot2(RRTot,xmax=4)
+mtext("a. Total biomass",3,cex=0.7)
+#mtext("a",3,adj = -0.2.cex=1.5)
+mtext(RRnames,side=2,las=2,at=seq(11,1),cex=0.7,line=1)
+RRplot2(RRdiatom,xmax=4)
+mtext("b. Diatom",3,cex=0.7)
+RRplot2(RRcyano,xmax=4)
+mtext("c. Cyanobacteria",3,cex=0.7)
+RRplot2(RRgreen,xmin=-4,xmax=6)
+mtext("d. Chlorophyte",3,cex=0.7)
+dev.off()
 ```
 
 ```{r Figure 4 - Iron RF model}
+#pdf("Figure_4.pdf",width=5,height=5)
 layout(matrix(c(2,1,1,1, 2,1,1,1, 2,1,1,1, 0,3,3,3),4,4))
 
 #Main scatterplot
@@ -350,10 +399,13 @@ text(-0.4,8,"c",cex=2)
 text(0,c(3.12,2.88),c("Probable","Fe limitation"),col="orangered")
 axis(2,labels=F)
 abline(h=3.6,lty=2)
+#dev.off()
 ```
 
 ```{r Figure 5 - Zinc RF model}
 #Partial dependency for DRP
+pdf("Figure_5.pdf",width=5,height=3)
+par(mar=c(4.5,4.5,0.5,0.5))
 plot(PDP_PZn$y~PDP_PZn$x,type="l",xlim=c(1,100),xaxt="n",las=1,
      xlab="DRP concentration (µg/L)",ylim=c(-0.7,0.2),
      ylab="logit(Zn)",cex.lab=1.2,log="x")
@@ -367,6 +419,7 @@ stripchart(predclass[predclass$Zn_TF=="Yes",'SRP_ugL'],col="purple3",
 
 
 legend("bottomright",legend=c("Zn limited","Not Zn limited"),pch=c(16,1),col=c("purple3","black"),pt.cex=1.2)
+dev.off()
 ```
 
 ```{r Figure S3 - field v lab biomass}
