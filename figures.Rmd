@@ -388,7 +388,7 @@ plot(PDP_P$y~PDP_P$x,type="l",log="x",xlim=c(1,100),xaxt="n",las=1,
      xlab="",ylim=c(-0.2,0.4),ylab="logit(Fe)",cex.lab=1.2)
 text(1,0.35,"b",cex=2)
 logaxis(0,3,1,labels=F)
-text(13,c(0,0.12),c("Probable","Fe limitation"),col="orangered")
+text(13,c(0.12,0),c("Probable","Fe limitation"),col="orangered")
 abline(v=5.57,lty=2)
 
 #Partial dependency for N dep
